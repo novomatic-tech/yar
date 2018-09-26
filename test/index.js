@@ -1671,3 +1671,67 @@ it('will throw error if session ID generator function is defined but not typeof 
 
     done();
 });
+
+it('should allow to revoke specific session on the server side', (done) => {
+
+    const options = {
+        maxCookieSize: 0,
+        cookieOptions: {
+            password: internals.password
+        }
+    };
+
+    const server = new Hapi.Server();
+    server.connection();
+
+    server.route([
+        {
+            method: 'GET', path: '/increment', handler: (request, reply) => {
+
+                const value = request.yar.get('value');
+                const result = value ? value + 1 : 1;
+                request.yar.set('value', result);
+                reply({
+                    sessionId: request.yar.id,
+                    value: result
+                });
+            }
+        }
+    ]);
+
+    server.register({ register: require('../'), options }, (err) => {
+
+        expect(err).to.not.exist();
+        server.start(() => {
+
+            server.inject({ method: 'GET', url: '/increment' }, (response) => {
+
+                expect(response.result.value).to.equal(1);
+                const header = response.headers['set-cookie'];
+                const cookie = header[0].match(/(session=[^\x00-\x20\"\,\;\\\x7F]*)/);
+
+                // check error handling
+                server.yar.revoke(null).catch((error) => {
+
+                    expect(error).to.exist();
+
+                    // revoke session
+                    server.yar.revoke(response.result.sessionId).then(() => {
+
+                        Promise.all([
+                            server.inject({ method: 'GET', url: '/increment', headers: { cookie: cookie[1] } }),
+                            server.inject({ method: 'GET', url: '/increment', headers: { cookie: cookie[1] } })
+                        ]).then((responses) => {
+
+                            expect(responses[0].result.value).to.equal(1);
+                            expect(responses[1].result.value).to.equal(2);
+                            done();
+                        });
+                    });
+
+                });
+
+            });
+        });
+    });
+});
