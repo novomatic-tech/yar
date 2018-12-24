@@ -1,8 +1,8 @@
 {
-  "name": "yar",
+  "name": "yar8",
   "description": "Cookie jar plugin for Hapi",
-  "version": "8.1.2",
-  "repository": "git://github.com/hapijs/yar",
+  "version": "8.2.0",
+  "repository": "git://github.com/novomatic-tech/yar",
   "main": "lib/index.js",
   "keywords": [
     "hapi",
